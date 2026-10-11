@@ -4,39 +4,25 @@
     "slug": "mz-music",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#070b09"
-    },
-    "updates": {
-      "fallbackToCacheTimeout": 0,
-      "enabled": true,
-      "checkAutomatically": "ON_LOAD"
+      "backgroundColor": "#070b09",
+      "resizeMode": "contain"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTabletMode": true,
-      "bundleIdentifier": "com.murad003077.mzmusic",
-      "buildNumber": "1.0.0"
+      "supportsTablet": true,
+      "bundleIdentifier": "com.murad003077.mzmusic"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#070b09"
-      },
       "package": "com.murad003077.mzmusic",
-      "versionCode": 1
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      "expo-font"
-    ]
+      "permissions": [
+        "INTERNET",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    }
   }
 }

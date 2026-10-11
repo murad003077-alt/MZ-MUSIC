@@ -1,21 +1,67 @@
-MIT License
+# MZ MUSIC
 
-Copyright (c) 2026 murad003077-alt
+Aplicación musical gratuita, no premium, para iPhone y Android con React Native + Expo.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+## Objetivo
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+MZ MUSIC es una app de música moderna inspirada en Spotify, con un diseño premium oscuro y verde neón, creada con fuentes legales y gratuitas, sin suscripciones ni servicios de pago para las funciones principales.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+## Qué incluye
+
+- Inicio, buscar, novedades, mi música y perfil
+- Reproductor básico funcional
+- Catálogo con música legalmente reutilizable bajo licencias gratuitas
+- Favoritos y playlists locales
+- Recomendaciones con algoritmo propio
+- Descargas solo cuando la licencia lo permita
+- Diseño para iPhone y Android
+
+## Fuentes musicales usadas
+
+La aplicación está pensada para usar fuentes legales y gratuitas:
+
+- Jamendo (Creative Commons)
+- Internet Archive (dominio público / CC)
+- Free Music Archive (CC)
+
+Se evita cualquier uso de música comercial sin permiso.
+
+## Cómo probar
+
+1. Instala dependencias:
+   npm install
+2. Inicia Expo:
+   npx expo start
+3. Escanea el QR con Expo Go en tu iPhone o usa el emulador Android.
+
+## Variables de entorno
+
+Copia `.env.example` a `.env` y personaliza si quieres:
+
+```bash
+cp .env.example .env
+```
+
+## Costes reales
+
+- Desarrollo: gratuito
+- Expo: gratuito
+- Jamendo: gratuito con límites de uso
+- Archive.org: gratuito
+- App Store: $99/año (solo si publicas)
+- TestFlight: gratuito
+
+## Nota importante
+
+Para una versión de producción completa, tendrás que revisar la licencia de cada pista antes de permitir descarga offline. La app bloquea descargas de contenidos no autorizados.
+
+## Estado actual
+
+La base funcional de la aplicación está preparada y lista para arrancar en Expo. La integración con fuentes legales está implementada, pero aún debes revisar la licencia exacta de cada archivo descargado antes de distribuirlo públicamente.
+
+## Próximos pasos recomendados
+
+- Añadir más pantallas para detalle de artista y sesión de usuario
+- Mejorar el reproductor con volumen, UI de progreso y controles
+- Conectar una base de datos local más completa
+- Preparar builds de producción para TestFlight y App Store
