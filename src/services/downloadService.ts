@@ -1,28 +1,77 @@
+import * as FileSystem from 'expo-file-system';
 import { Track } from '../types/music';
+import { canDownloadTrack } from './catalogService';
 
-export function buildRecommendations(tracks: Track[], recentlyPlayed: Track[] = [], limit = 15): Track[] {
-  if (!tracks.length) return [];
+const DOWNLOAD_DIR = `${FileSystem.documentDirectory}mz_music_downloads/`;
 
-  const history = recentlyPlayed.length ? recentlyPlayed : tracks.slice(0, 3);
-  const weights = new Map<string, number>();
+export async function ensureDownloadDir() {
+  try {
+    const info = await FileSystem.getInfoAsync(DOWNLOAD_DIR);
+    if (!info.exists) {
+      await FileSystem.makeDirectoryAsync(DOWNLOAD_DIR, { intermediates: true });
+      console.log('✅ Directorio de descargas creado');
+    }
+  } catch (error) {
+    console.error('❌ Error creando directorio:', error);
+  }
+}
 
-  for (const track of history) {
-    weights.set(track.genre, (weights.get(track.genre) || 0) + 1);
-    weights.set(track.artist, (weights.get(track.artist) || 0) + 2);
+export async function downloadTrack(track: Track): Promise<boolean> {
+  if (!canDownloadTrack(track)) {
+    console.warn(`⚠️ Track ${track.title} no tiene licencia para descargar`);
+    return false;
   }
 
-  return tracks
-    .map((track) => {
-      let score = 0;
+  if (!track.audioUrl) {
+    console.warn(`⚠️ Track ${track.title} no tiene URL de audio`);
+    return false;
+  }
 
-      if (weights.has(track.genre)) score += (weights.get(track.genre) || 0) * 10;
-      if (weights.has(track.artist)) score += (weights.get(track.artist) || 0) * 15;
+  try {
+    await ensureDownloadDir();
+    const filename = `${track.id.replace(/[^a-z0-9]/gi, '_')}.mp3`;
+    const filePath = `${DOWNLOAD_DIR}${filename}`;
 
-      if (recentlyPlayed.some((t) => t.id === track.id)) score -= 100;
+    console.log(`📥 Descargando: ${track.title}`);
+    const downloadResumable = FileSystem.createDownloadResumable(
+      track.audioUrl,
+      filePath,
+      {}
+    );
 
-      return { track, score };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map((item) => item.track);
+    const result = await downloadResumable.downloadAsync();
+    if (result && result.status === 200) {
+      console.log(`✅ Descargado: ${track.title}`);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error(`❌ Error descargando ${track.title}:`, error);
+    return false;
+  }
+}
+
+export async function getDownloadedTrackPath(trackId: string): Promise<string | null> {
+  try {
+    const filename = `${trackId.replace(/[^a-z0-9]/gi, '_')}.mp3`;
+    const filePath = `${DOWNLOAD_DIR}${filename}`;
+    const info = await FileSystem.getInfoAsync(filePath);
+    return info.exists ? filePath : null;
+  } catch (error) {
+    console.error('❌ Error obteniendo ruta:', error);
+    return null;
+  }
+}
+
+export async function deleteDownloadedTrack(trackId: string): Promise<boolean> {
+  try {
+    const filename = `${trackId.replace(/[^a-z0-9]/gi, '_')}.mp3`;
+    const filePath = `${DOWNLOAD_DIR}${filename}`;
+    await FileSystem.deleteAsync(filePath);
+    console.log(`✅ Eliminado: ${trackId}`);
+    return true;
+  } catch (error) {
+    console.error('❌ Error eliminando:', error);
+    return false;
+  }
 }

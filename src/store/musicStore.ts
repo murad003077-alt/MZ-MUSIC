@@ -1,187 +1,246 @@
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
-
-export interface Track {
-  id: string;
-  title: string;
-  artist: string;
-  album: string;
-  duration: number;
-  genre: string;
-  cover: string;
-  availableOffline: boolean;
-  status: string;
-  source: string;
-  lyrics: string[];
-  audioUrl?: string;
-}
-
-export interface Playlist {
-  id: string;
-  name: string;
-  description: string;
-  cover: string;
-  tracks: Track[];
-  createdAt: Date;
-}
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  avatar?: string;
-  favorites: string[];
-  playlists: Playlist[];
-  downloadedTracks: string[];
-  recentlyPlayed: Track[];
-}
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Track, Playlist, PlayerState, UserProfile } from '../types/music';
 
 interface MusicStore {
+  // Player
+  player: PlayerState;
+  setCurrentTrack: (track: Track | null) => void;
+  setIsPlaying: (value: boolean) => void;
+  setCurrentTime: (value: number) => void;
+  setDuration: (value: number) => void;
+  setQueue: (queue: Track[]) => void;
+  nextTrack: () => void;
+  previousTrack: () => void;
+
   // Tracks
   tracks: Track[];
   setTracks: (tracks: Track[]) => void;
-  currentTrack: Track | null;
-  setCurrentTrack: (track: Track | null) => void;
 
-  // Playback
-  isPlaying: boolean;
-  setIsPlaying: (isPlaying: boolean) => void;
-  currentTime: number;
-  setCurrentTime: (time: number) => void;
-  queue: Track[];
-  setQueue: (queue: Track[]) => void;
-  queueIndex: number;
-  setQueueIndex: (index: number) => void;
-
-  // User
-  user: User | null;
-  setUser: (user: User | null) => void;
-  favorites: Set<string>;
+  // User data
+  favorites: string[];
   toggleFavorite: (trackId: string) => void;
-  downloadedTracks: Set<string>;
+  isFavorite: (trackId: string) => boolean;
+
+  downloaded: string[];
   toggleDownload: (trackId: string) => void;
+  isDownloaded: (trackId: string) => boolean;
 
   // Playlists
   playlists: Playlist[];
-  setPlaylists: (playlists: Playlist[]) => void;
   createPlaylist: (name: string, description: string) => void;
   addTrackToPlaylist: (playlistId: string, track: Track) => void;
-  removeTrackFromPlaylist: (playlistId: string, trackId: string) => void;
+  deletePlaylist: (playlistId: string) => void;
 
-  // Loading & Error
+  // Recent
+  recentlyPlayed: string[];
+  addToRecent: (trackId: string) => void;
+
+  // User
+  user: UserProfile | null;
+  setUser: (user: UserProfile | null) => void;
+
+  // UI
   isLoading: boolean;
-  setIsLoading: (isLoading: boolean) => void;
+  setIsLoading: (loading: boolean) => void;
   error: string | null;
-  setError: (error: string | null) => void;
+  setError: (message: string | null) => void;
 
   // Persistence
-  saveState: () => Promise<void>;
   loadState: () => Promise<void>;
+  saveState: () => Promise<void>;
 }
 
-export const useMusicStore = create<MusicStore>((set, get) => ({
-  tracks: [],
-  setTracks: (tracks) => set({ tracks }),
+const initialPlayerState: PlayerState = {
   currentTrack: null,
-  setCurrentTrack: (currentTrack) => set({ currentTrack }),
-
   isPlaying: false,
-  setIsPlaying: (isPlaying) => set({ isPlaying }),
   currentTime: 0,
-  setCurrentTime: (currentTime) => set({ currentTime }),
+  duration: 0,
   queue: [],
-  setQueue: (queue) => set({ queue }),
   queueIndex: 0,
-  setQueueIndex: (queueIndex) => set({ queueIndex }),
+};
 
-  user: null,
-  setUser: (user) => set({ user }),
-  favorites: new Set<string>(),
-  toggleFavorite: (trackId) =>
-    set((state) => {
-      const favorites = new Set(state.favorites);
-      if (favorites.has(trackId)) {
-        favorites.delete(trackId);
-      } else {
-        favorites.add(trackId);
-      }
-      return { favorites };
-    }),
-  downloadedTracks: new Set<string>(),
-  toggleDownload: (trackId) =>
-    set((state) => {
-      const downloadedTracks = new Set(state.downloadedTracks);
-      if (downloadedTracks.has(trackId)) {
-        downloadedTracks.delete(trackId);
-      } else {
-        downloadedTracks.add(trackId);
-      }
-      return { downloadedTracks };
-    }),
-
+export const useMusicStore = create<MusicStore>((set, get) => ({
+  player: initialPlayerState,
+  tracks: [],
+  favorites: [],
+  downloaded: [],
   playlists: [],
-  setPlaylists: (playlists) => set({ playlists }),
-  createPlaylist: (name, description) =>
-    set((state) => {
-      const newPlaylist: Playlist = {
-        id: `playlist-${Date.now()}`,
-        name,
-        description,
-        cover: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=750&q=80',
-        tracks: [],
-        createdAt: new Date(),
-      };
-      return { playlists: [...state.playlists, newPlaylist] };
-    }),
-  addTrackToPlaylist: (playlistId, track) =>
-    set((state) => {
-      const playlists = state.playlists.map((p) =>
-        p.id === playlistId ? { ...p, tracks: [...p.tracks, track] } : p,
-      );
-      return { playlists };
-    }),
-  removeTrackFromPlaylist: (playlistId, trackId) =>
-    set((state) => {
-      const playlists = state.playlists.map((p) =>
-        p.id === playlistId ? { ...p, tracks: p.tracks.filter((t) => t.id !== trackId) } : p,
-      );
-      return { playlists };
-    }),
-
+  recentlyPlayed: [],
+  user: { id: 'user-1', name: 'Usuario MZ' },
   isLoading: true,
-  setIsLoading: (isLoading) => set({ isLoading }),
   error: null,
+
+  setCurrentTrack: (currentTrack) => {
+    set((state) => ({
+      player: { ...state.player, currentTrack, currentTime: 0 },
+    }));
+  },
+
+  setIsPlaying: (isPlaying) => {
+    set((state) => ({
+      player: { ...state.player, isPlaying },
+    }));
+  },
+
+  setCurrentTime: (currentTime) => {
+    set((state) => ({
+      player: { ...state.player, currentTime },
+    }));
+  },
+
+  setDuration: (duration) => {
+    set((state) => ({
+      player: { ...state.player, duration },
+    }));
+  },
+
+  setQueue: (queue) => {
+    set((state) => ({
+      player: { ...state.player, queue, queueIndex: 0 },
+    }));
+  },
+
+  nextTrack: () => {
+    const state = get();
+    const { queue, queueIndex } = state.player;
+    if (queue.length === 0) return;
+    const nextIndex = (queueIndex + 1) % queue.length;
+    const nextTrack = queue[nextIndex];
+    set((s) => ({
+      player: {
+        ...s.player,
+        currentTrack: nextTrack,
+        queueIndex: nextIndex,
+        currentTime: 0,
+      },
+    }));
+    get().addToRecent(nextTrack.id);
+  },
+
+  previousTrack: () => {
+    const state = get();
+    const { queue, queueIndex } = state.player;
+    if (queue.length === 0) return;
+    const prevIndex = (queueIndex - 1 + queue.length) % queue.length;
+    const prevTrack = queue[prevIndex];
+    set((s) => ({
+      player: {
+        ...s.player,
+        currentTrack: prevTrack,
+        queueIndex: prevIndex,
+        currentTime: 0,
+      },
+    }));
+    get().addToRecent(prevTrack.id);
+  },
+
+  setTracks: (tracks) => set({ tracks }),
+
+  toggleFavorite: (trackId) => {
+    set((state) => {
+      const isFav = state.favorites.includes(trackId);
+      return {
+        favorites: isFav
+          ? state.favorites.filter((id) => id !== trackId)
+          : [...state.favorites, trackId],
+      };
+    });
+  },
+
+  isFavorite: (trackId) => get().favorites.includes(trackId),
+
+  toggleDownload: (trackId) => {
+    set((state) => {
+      const isDownloaded = state.downloaded.includes(trackId);
+      return {
+        downloaded: isDownloaded
+          ? state.downloaded.filter((id) => id !== trackId)
+          : [...state.downloaded, trackId],
+      };
+    });
+  },
+
+  isDownloaded: (trackId) => get().downloaded.includes(trackId),
+
+  createPlaylist: (name, description) => {
+    const playlist: Playlist = {
+      id: `pl-${Date.now()}`,
+      name,
+      description,
+      cover: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=700&q=80',
+      tracks: [],
+      createdAt: new Date().toISOString(),
+      isLocal: true,
+    };
+    set((state) => ({
+      playlists: [...state.playlists, playlist],
+    }));
+  },
+
+  addTrackToPlaylist: (playlistId, track) => {
+    set((state) => ({
+      playlists: state.playlists.map((p) =>
+        p.id === playlistId
+          ? { ...p, tracks: [...p.tracks, track] }
+          : p
+      ),
+    }));
+  },
+
+  deletePlaylist: (playlistId) => {
+    set((state) => ({
+      playlists: state.playlists.filter((p) => p.id !== playlistId),
+    }));
+  },
+
+  addToRecent: (trackId) => {
+    set((state) => {
+      const filtered = state.recentlyPlayed.filter((id) => id !== trackId);
+      return {
+        recentlyPlayed: [trackId, ...filtered].slice(0, 50),
+      };
+    });
+  },
+
+  setUser: (user) => set({ user }),
+
+  setIsLoading: (isLoading) => set({ isLoading }),
+
   setError: (error) => set({ error }),
+
+  loadState: async () => {
+    try {
+      const saved = await AsyncStorage.getItem('mz-music-state');
+      if (!saved) return;
+      const state = JSON.parse(saved);
+      set({
+        favorites: state.favorites || [],
+        downloaded: state.downloaded || [],
+        playlists: state.playlists || [],
+        recentlyPlayed: state.recentlyPlayed || [],
+      });
+      console.log('✅ Estado local restaurado');
+    } catch (error) {
+      console.warn('⚠️ Error cargando estado local:', error);
+    }
+  },
 
   saveState: async () => {
     try {
       const state = get();
-      await SecureStore.setItemAsync(
-        'mzMusicState',
+      await AsyncStorage.setItem(
+        'mz-music-state',
         JSON.stringify({
-          favorites: Array.from(state.favorites),
-          downloadedTracks: Array.from(state.downloadedTracks),
+          favorites: state.favorites,
+          downloaded: state.downloaded,
           playlists: state.playlists,
-        }),
+          recentlyPlayed: state.recentlyPlayed,
+        })
       );
+      console.log('✅ Estado guardado');
     } catch (error) {
-      console.error('Error saving state:', error);
-    }
-  },
-
-  loadState: async () => {
-    try {
-      const saved = await SecureStore.getItemAsync('mzMusicState');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        set({
-          favorites: new Set(parsed.favorites || []),
-          downloadedTracks: new Set(parsed.downloadedTracks || []),
-          playlists: parsed.playlists || [],
-        });
-      }
-    } catch (error) {
-      console.error('Error loading state:', error);
+      console.warn('⚠️ Error guardando estado:', error);
     }
   },
 }));
